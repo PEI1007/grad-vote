@@ -13,6 +13,12 @@
         body { font-family: -apple-system, sans-serif; background: #f4f7f6; margin: 0; padding: 15px; }
         .container { max-width: 500px; margin: 0 auto; background: white; border-radius: 24px; padding: 25px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
         h2 { text-align: center; color: #2d3436; margin-bottom: 5px; }
+        
+        /* 姓名輸入框樣式 */
+        .input-group { margin: 20px 0; }
+        #user-name { width: 100%; padding: 14px; border-radius: 12px; border: 1px solid #dfe6e9; box-sizing: border-box; font-size: 1rem; outline: none; transition: 0.3s; }
+        #user-name:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.1); }
+
         .legend { display: flex; justify-content: center; gap: 10px; font-size: 0.75rem; margin-bottom: 20px; color: #636e72; }
         .legend-item { display: flex; align-items: center; gap: 4px; }
         .dot { width: 10px; height: 10px; border-radius: 50%; }
@@ -26,14 +32,25 @@
         .day.selected { background-color: var(--selected) !important; color: white !important; transform: scale(1.05); z-index: 2; }
         .day.not-current { visibility: hidden; }
         .vote-badge { position: absolute; top: 2px; right: 4px; font-size: 8px; opacity: 0.8; }
-        .btn { width: 100%; padding: 16px; border: none; border-radius: 14px; font-size: 1rem; font-weight: bold; cursor: pointer; margin-top: 20px; background: var(--primary); color: white; }
+        .btn { width: 100%; padding: 16px; border: none; border-radius: 14px; font-size: 1rem; font-weight: bold; cursor: pointer; margin-top: 20px; background: var(--primary); color: white; transition: 0.3s; }
+        .btn:active { transform: scale(0.98); opacity: 0.9; }
         #loading { text-align: center; padding: 20px; color: var(--primary); font-weight: bold; }
+
+        /* 賺大錢跑馬燈樣式 */
+        .animation-bar { width: 100%; overflow: hidden; margin-top: 25px; color: #a29bfe; font-weight: bold; border-top: 1px dashed #eee; padding-top: 10px; }
+        .animation-content { display: inline-block; white-space: nowrap; animation: marquee 12s linear infinite; font-size: 0.9rem; }
+        @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
     </style>
 </head>
 <body>
 
 <div class="container" id="main-view">
-    <h2>🎓 拍攝時間(雲端同步版)</h2>
+    <h2>🎓 拍攝時間(實名雲端版)</h2>
+    
+    <div class="input-group">
+        <input type="text" id="user-name" placeholder="請輸入你的姓名 (例如: 王小明)" autocomplete="off">
+    </div>
+
     <div class="legend">
         <div class="legend-item"><div class="dot" style="background:var(--hot-1)"></div> 1-2P</div>
         <div class="legend-item"><div class="dot" style="background:var(--hot-2)"></div> 3-5P</div>
@@ -44,24 +61,29 @@
     <div id="calendar-area"></div>
 
     <button class="btn" onclick="submitVote()">送出我的投票</button>
+
+    <div class="animation-bar">
+        <div class="animation-content">
+            💰 有投票會賺大錢！ 💰 有投票會賺大錢！ 💰 有投票會賺大錢！ 💰 有投票會賺大錢！
+        </div>
+    </div>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
-    import { getDatabase, ref, onValue, set, get, runTransaction } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-database.js";
+    import { getDatabase, ref, onValue, set, runTransaction } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-database.js";
 
-    // ─── 這裡貼上你的 Firebase 設定 ───
+    // ─── Firebase 設定 (已修正 databaseURL 語法) ───
     const firebaseConfig = {
         apiKey: "AIzaSyBemGZ_CcJBvlPXrq_TXePOTgrT-YDWXvU",
         authDomain: "grad-photo-vote.firebaseapp.com",
-        databaseURL: "https://grad-photo-vote-default-rtdb.firebaseio.com/", // 加上這行開頭
+        databaseURL: "https://grad-photo-vote-default-rtdb.firebaseio.com/", 
         projectId: "grad-photo-vote",
         storageBucket: "grad-photo-vote.firebasestorage.app",
         messagingSenderId: "1033460522319",
         appId: "1:1033460522319:web:8ed5207a3ef976726cf93a",
         measurementId: "G-NHKBMKVEBH"
     };
-    // ────────────────────────────────
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
@@ -118,16 +140,33 @@
         parent.appendChild(grid);
     }
 
+    // 修正後的投票邏輯
     window.submitVote = async () => {
-        if(mySelected.size === 0) return alert('請選日期');
+        const userName = document.getElementById('user-name').value.trim();
         
-        for (let date of mySelected) {
-            const dateRef = ref(db, `votes/${date}`);
-            await runTransaction(dateRef, (count) => (count || 0) + 1);
+        if(!userName) return alert('請先輸入你的姓名喔！');
+        if(mySelected.size === 0) return alert('請至少選擇一個日期');
+        
+        try {
+            // 1. 更新總票數
+            for (let date of mySelected) {
+                const dateRef = ref(db, `votes/${date}`);
+                await runTransaction(dateRef, (count) => (count || 0) + 1);
+            }
+
+            // 2. 記錄名單
+            const userRecordRef = ref(db, `voters/${userName}`);
+            await set(userRecordRef, Array.from(mySelected));
+
+            alert(`同步成功！${userName} 投票後一定會賺大錢！💰`);
+            
+            mySelected.clear();
+            document.getElementById('user-name').value = '';
+            renderCalendars();
+        } catch (e) {
+            alert('投票失敗，請檢查網路連線');
+            console.error(e);
         }
-        alert('同步成功！現在大家都能看到這幾天變熱門了。');
-        mySelected.clear();
-        renderCalendars();
     };
 </script>
 </body>
