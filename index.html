@@ -3,184 +3,132 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>畢業照拍攝投票 - 熱力圖版</title>
+    <title>畢業照拍攝雲端投票</title>
     <style>
         :root {
             --primary: #6c5ce7;
-            --hot-1: #ffeaa7; /* 1-2票：淡黃 */
-            --hot-2: #fab1a0; /* 3-5票：淺橘 */
-            --hot-3: #ff7675; /* 6票以上：珊瑚紅 */
-            --selected: #00cec9; /* 自己選中的顏色 */
+            --hot-1: #ffeaa7; --hot-2: #fab1a0; --hot-3: #ff7675;
+            --selected: #00cec9;
         }
-
         body { font-family: -apple-system, sans-serif; background: #f4f7f6; margin: 0; padding: 15px; }
         .container { max-width: 500px; margin: 0 auto; background: white; border-radius: 24px; padding: 25px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
-        
         h2 { text-align: center; color: #2d3436; margin-bottom: 5px; }
         .legend { display: flex; justify-content: center; gap: 10px; font-size: 0.75rem; margin-bottom: 20px; color: #636e72; }
         .legend-item { display: flex; align-items: center; gap: 4px; }
         .dot { width: 10px; height: 10px; border-radius: 50%; }
-
-        .calendar-title { font-weight: bold; font-size: 1.1rem; color: #2d3436; margin: 20px 0 10px; display: flex; justify-content: space-between; }
+        .calendar-title { font-weight: bold; font-size: 1.1rem; color: #2d3436; margin: 20px 0 10px; }
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
         .weekday { text-align: center; font-size: 0.75rem; color: #b2bec3; padding-bottom: 8px; }
-        
-        .day {
-            aspect-ratio: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            border-radius: 12px;
-            background: #fdfdfd;
-            border: 1px solid #f0f0f0;
-            font-size: 0.95rem;
-            cursor: pointer;
-            position: relative;
-            transition: all 0.2s ease;
-        }
-
-        /* 熱力圖顏色分階 */
-        .day.hot-low { background-color: var(--hot-1); border-color: #f1d48d; }
-        .day.hot-mid { background-color: var(--hot-2); border-color: #e19586; color: white; }
-        .day.hot-high { background-color: var(--hot-3); border-color: #d65a58; color: white; }
-        
-        /* 選中樣式優先 */
-        .day.selected { background-color: var(--selected) !important; color: white !important; border-color: #00a8a8 !important; transform: scale(1.05); z-index: 2; box-shadow: 0 4px 10px rgba(0,206,201,0.3); }
-        .day.selected::after { content: '我選這天'; position: absolute; bottom: 2px; font-size: 7px; font-weight: bold; }
-
+        .day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: #fdfdfd; border: 1px solid #f0f0f0; font-size: 0.95rem; cursor: pointer; position: relative; transition: 0.2s; }
+        .day.hot-low { background-color: var(--hot-1); }
+        .day.hot-mid { background-color: var(--hot-2); color: white; }
+        .day.hot-high { background-color: var(--hot-3); color: white; }
+        .day.selected { background-color: var(--selected) !important; color: white !important; transform: scale(1.05); z-index: 2; }
         .day.not-current { visibility: hidden; }
-        .vote-badge { position: absolute; top: 2px; right: 4px; font-size: 8px; opacity: 0.7; }
-
-        .btn-group { margin-top: 25px; }
-        .btn { width: 100%; padding: 16px; border: none; border-radius: 14px; font-size: 1rem; font-weight: bold; cursor: pointer; margin-bottom: 12px; transition: 0.2s; }
-        .btn-submit { background: var(--primary); color: white; }
-        .btn-reset { background: #f1f2f6; color: #57606f; }
-
-        #confirm-panel { display: none; text-align: center; }
-        .date-chip { display: inline-block; background: #f1f2f6; padding: 8px 15px; border-radius: 20px; margin: 5px; font-size: 0.9rem; }
+        .vote-badge { position: absolute; top: 2px; right: 4px; font-size: 8px; opacity: 0.8; }
+        .btn { width: 100%; padding: 16px; border: none; border-radius: 14px; font-size: 1rem; font-weight: bold; cursor: pointer; margin-top: 20px; background: var(--primary); color: white; }
+        #loading { text-align: center; padding: 20px; color: var(--primary); font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="container" id="main-view">
-    <h2>🎓 拍攝時間挑選</h2>
+    <h2>🎓 拍攝時間(雲端同步版)</h2>
     <div class="legend">
-        <div class="legend-item"><div class="dot" style="background:var(--hot-1)"></div> 稍有人氣</div>
-        <div class="legend-item"><div class="dot" style="background:var(--hot-2)"></div> 熱門日期</div>
-        <div class="legend-item"><div class="dot" style="background:var(--hot-3)"></div> 超多人選</div>
-        <div class="legend-item"><div class="dot" style="background:var(--selected)"></div> 你的選擇</div>
+        <div class="legend-item"><div class="dot" style="background:var(--hot-1)"></div> 1-2P</div>
+        <div class="legend-item"><div class="dot" style="background:var(--hot-2)"></div> 3-5P</div>
+        <div class="legend-item"><div class="dot" style="background:var(--hot-3)"></div> 6P+</div>
     </div>
 
+    <div id="loading">讀取雲端數據中...</div>
     <div id="calendar-area"></div>
 
-    <div class="btn-group">
-        <button class="btn btn-submit" onclick="showConfirm()">送出投票並查看確認單</button>
-        <button class="btn btn-reset" onclick="resetAll()">清除所有數據(管理員用)</button>
-    </div>
+    <button class="btn" onclick="submitVote()">送出我的投票</button>
 </div>
 
-<div class="container" id="confirm-panel">
-    <h2 style="color:var(--selected)">確認你的日期</h2>
-    <p style="color:#636e72">同學，你一共勾選了 <span id="count" style="font-weight:bold;color:var(--primary)">0</span> 天：</p>
-    <div id="confirmed-list" style="margin: 20px 0;"></div>
-    <button class="btn btn-submit" onclick="location.reload()">回首頁</button>
-</div>
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
+    import { getDatabase, ref, onValue, set, get, runTransaction } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-database.js";
 
-<script>
-    const selectedDates = new Set();
-    // 取得歷史票數 (模擬多人投票結果)
-    let globalVotes = JSON.parse(localStorage.getItem('grad_hot_map')) || {};
+    // ─── 這裡貼上你的 Firebase 設定 ───
+    const firebaseConfig = {
+        apiKey: "AIzaSyBemGZ_CcJBvlPXrq_TXePOTgrT-YDWXvU",
+        authDomain: "grad-photo-vote.firebaseapp.com",
+        databaseURL: "https://grad-photo-vote-default-rtdb.firebaseio.com/", // 加上這行開頭
+        projectId: "grad-photo-vote",
+        storageBucket: "grad-photo-vote.firebasestorage.app",
+        messagingSenderId: "1033460522319",
+        appId: "1:1033460522319:web:8ed5207a3ef976726cf93a",
+        measurementId: "G-NHKBMKVEBH"
+    };
+    // ────────────────────────────────
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const votesRef = ref(db, 'votes');
+
+    let currentVotes = {};
+    const mySelected = new Set();
+
+    // 監聽雲端數據
+    onValue(votesRef, (snapshot) => {
+        currentVotes = snapshot.val() || {};
+        document.getElementById('loading').style.display = 'none';
+        renderCalendars();
+    });
 
     function renderCalendars() {
         const area = document.getElementById('calendar-area');
         area.innerHTML = '';
-        // 渲染 5 月 (2026/5/1 是週五)
-        createMonth(area, "2026年 5月", 5, 5, 31);
-        // 渲染 6 月 (2026/6/1 是週一)
-        createMonth(area, "2026年 6月", 6, 1, 30);
+        createMonth(area, "5月", 5, 5, 31);
+        createMonth(area, "6月", 6, 1, 30);
     }
 
     function createMonth(parent, title, month, startDay, totalDays) {
         const header = document.createElement('div');
         header.className = 'calendar-title';
-        header.innerHTML = `<span>${title}</span>`;
+        header.innerText = title;
         parent.appendChild(header);
 
         const grid = document.createElement('div');
         grid.className = 'calendar-grid';
-        
-        const weeks = ['日','一','二','三','四','五','六'];
-        weeks.forEach(w => {
-            const div = document.createElement('div');
-            div.className = 'weekday';
-            div.innerText = w;
-            grid.appendChild(div);
+        ['日','一','二','三','四','五','六'].forEach(w => {
+            const d = document.createElement('div'); d.className = 'weekday'; d.innerText = w; grid.appendChild(d);
         });
 
-        for(let i=0; i<startDay; i++) {
-            const div = document.createElement('div');
-            div.className = 'day not-current';
-            grid.appendChild(div);
-        }
+        for(let i=0; i<startDay; i++) grid.appendChild(Object.assign(document.createElement('div'), {className:'day not-current'}));
 
         for(let d=1; d<=totalDays; d++) {
-            const dateStr = `${month}/${d}`;
+            const dateStr = `${month}_${d}`;
             const div = document.createElement('div');
-            const votes = globalVotes[dateStr] || 0;
-            
+            const count = currentVotes[dateStr] || 0;
             div.className = 'day';
-            // 根據票數加上熱力圖 class
-            if (votes >= 6) div.classList.add('hot-high');
-            else if (votes >= 3) div.classList.add('hot-mid');
-            else if (votes >= 1) div.classList.add('hot-low');
+            if (count >= 6) div.classList.add('hot-high');
+            else if (count >= 3) div.classList.add('hot-mid');
+            else if (count >= 1) div.classList.add('hot-low');
+            if (mySelected.has(dateStr)) div.classList.add('selected');
 
-            div.innerHTML = `<span class="vote-badge">${votes > 0 ? votes+'P' : ''}</span>${d}`;
-            
+            div.innerHTML = `<span class="vote-badge">${count > 0 ? count+'P' : ''}</span>${d}`;
             div.onclick = () => {
-                if(selectedDates.has(dateStr)) {
-                    selectedDates.delete(dateStr);
-                    div.classList.remove('selected');
-                } else {
-                    selectedDates.add(dateStr);
-                    div.classList.add('selected');
-                }
+                if(mySelected.has(dateStr)) { mySelected.delete(dateStr); div.classList.remove('selected'); }
+                else { mySelected.add(dateStr); div.classList.add('selected'); }
             };
             grid.appendChild(div);
         }
         parent.appendChild(grid);
     }
 
-    function showConfirm() {
-        if(selectedDates.size === 0) {
-            alert('記得選日期喔！');
-            return;
-        }
-
-        // 更新數據
-        selectedDates.forEach(date => {
-            globalVotes[date] = (globalVotes[date] || 0) + 1;
-        });
-        localStorage.setItem('grad_hot_map', JSON.stringify(globalVotes));
-
-        // 切換畫面
-        document.getElementById('main-view').style.display = 'none';
-        document.getElementById('confirm-panel').style.display = 'block';
-        document.getElementById('count').innerText = selectedDates.size;
+    window.submitVote = async () => {
+        if(mySelected.size === 0) return alert('請選日期');
         
-        const list = document.getElementById('confirmed-list');
-        list.innerHTML = Array.from(selectedDates).map(d => `<div class="date-chip">📅 ${d}</div>`).join('');
-    }
-
-    function resetAll() {
-        if(confirm('確定要清除所有人的投票數據嗎？')) {
-            localStorage.removeItem('grad_hot_map');
-            location.reload();
+        for (let date of mySelected) {
+            const dateRef = ref(db, `votes/${date}`);
+            await runTransaction(dateRef, (count) => (count || 0) + 1);
         }
-    }
-
-    renderCalendars();
+        alert('同步成功！現在大家都能看到這幾天變熱門了。');
+        mySelected.clear();
+        renderCalendars();
+    };
 </script>
-
 </body>
 </html>
